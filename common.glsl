@@ -6,6 +6,21 @@
 const float pi = 3.14159265358979;
 const float epsilon = 0.001;
 
+/*
+Implement to compile:
+
+Ray getRay
+bool hit_triangle
+vec3 center
+bool hit_sphere
+bool hit_movingSphere
+
+Implement to complete shading:
+float schlick
+bool scatter
+*/
+
+
 struct Ray {
     vec3 o;     // origin
     vec3 d;     // direction - always set with normalized vector
@@ -25,6 +40,7 @@ Ray createRay(vec3 o, vec3 d)
 {
     return createRay(o, d, 0.0);
 }
+
 
 vec3 pointOnRay(Ray r, float t)
 {
@@ -138,8 +154,16 @@ Ray getRay(Camera cam, vec2 pixel_sample)  //rnd pixel_sample viewport coordinat
     float time = cam.time0 + hash1(gSeed) * (cam.time1 - cam.time0);
     
     //Calculate eye_offset and ray direction
+    vec3 eye_offset = cam.eye + cam.u * ls.x + cam.v * ls.y;
 
-    return createRay(eye_offset, normalize(ray direction), time);
+    p = vec3(cam.focusDist * cam.width * (pixel_sample.x  / iResolution.x - 0.5),
+    focusDist * ca.height * (pixel_sample.y  / iResolution.y - 0.5),
+    cam.focusDist * cam.planeDist) - vec3(ls, 0, 0);
+
+    ray_dir = p.x * cam.u + p.y * cam.v + p.z * cam.n;
+    ray_dir = ray_dir.normalize();
+    
+    return createRay(eye_offset, normalize(ray_dir), time);
 }
 
 // MT_ material type
