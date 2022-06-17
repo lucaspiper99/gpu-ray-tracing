@@ -323,7 +323,7 @@ bool hit_triangle(Triangle tri, Ray r, float tmin, float tmax, out HitRecord rec
     //calculate a valid t and normal
     if(t < tmax && t > tmin)
     {
-        rec.t = r.t;
+        rec.t = t;
         rec.normal = normal;
         rec.pos = pointOnRay(r, rec.t);
         return true;
