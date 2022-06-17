@@ -9,11 +9,11 @@ const float epsilon = 0.001;
 /*
 Implement to compile:
 
-Ray getRay
-bool hit_triangle
-vec3 center
-bool hit_sphere
-bool hit_movingSphere
+Ray getRay -- DONE
+bool hit_triangle -- DONE
+vec3 center -- DONE
+bool hit_sphere -- DONE
+bool hit_movingSphere -- DONE
 
 Implement to complete shading:
 float schlick
@@ -276,6 +276,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         //else reflectProb = 1.0;
 
         if( hash1(gSeed) < reflectProb)  //Reflection
+        {
         // rScattered = calculate reflected ray
           // atten *= vec3(reflectProb); not necessary since we are only scattering reflectProb rays and not all reflected rays
         
@@ -298,13 +299,31 @@ Triangle createTriangle(vec3 v0, vec3 v1, vec3 v2)
     return t;
 }
 
-bool hit_triangle(Triangle t, Ray r, float tmin, float tmax, out HitRecord rec)
+bool hit_triangle(Triangle tri, Ray r, float tmin, float tmax, out HitRecord rec)
 {
     //INSERT YOUR CODE HERE
+    vec3 v1 = tri.b - tri.a;
+	vec3 v2 = tri.c - tri.a;
+	vec3 v3 = r.d * -1.0;
+	vec3 vs = r.o - tri.a;
+
+	float det = dot(v1, cross(v2, v3));
+	if (det == 0) return false;
+
+	float beta = dot(vs, cross(v2, v3)) / det;
+	float gamma = dot(v1, cross(vs, v3)) / det;
+	float t = dot(v1, cross(v2, vs)) / det;
+
+	if (beta < 0 || beta > 1 || gamma < 0 || gamma > 1) return false;
+	if ((beta + gamma) > 1) return false;
+
+    vec3 normal = cross((tri.b - tri.a), (tri.c - tri.a));
+	normal = normalize(normal);
+
     //calculate a valid t and normal
     if(t < tmax && t > tmin)
     {
-        rec.t = t;
+        rec.t = r.t;
         rec.normal = normal;
         rec.pos = pointOnRay(r, rec.t);
         return true;
@@ -348,6 +367,7 @@ MovingSphere createMovingSphere(vec3 center0, vec3 center1, float radius, float 
 
 vec3 center(MovingSphere mvsphere, float time)
 {
+    vec3 moving_center = mvsphere.center0 + (mvsphere.center1 - mvsphere.center0) * time;
     return moving_center;
 }
 
@@ -360,11 +380,26 @@ vec3 center(MovingSphere mvsphere, float time)
 bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 {
     //INSERT YOUR CODE HERE
+    float b = (s.center - r.o) * r.d;
+	float c = ((s.center - r.0) * (s.center - r.o)) - pow(s.radius, 2);
+
+	if (c > .0f) {
+		if (b <= .0f) return false;
+		if ((pow(b, 2) - c) < .0f) return false;
+		t = b - sqrt(pow(b, 2) - c);
+		return true;
+	}
+	else {
+		t = b + sqrt(pow(b, 2) - c);
+		return true;
+	}
+
     //calculate a valid t and normal
-	
     if(t < tmax && t > tmin) {
         rec.t = t;
         rec.pos = pointOnRay(r, rec.t);
+        vec3 normal = rec.pos - s.center;
+        normal = normalize(normal);
         rec.normal = normal
         return true;
     }
@@ -379,12 +414,30 @@ bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitReco
 
 
      //INSERT YOUR CODE HERE
+     
      //Calculate the moving center
+    vec3 movingCenter = center(s, r.t);
+
+	float b = (movingCenter - r.o) * r.d;
+	float c = ((movingCenter - r.o) * (movingCenter - r.o)) - pow(s.radius, 2);
+
+	if (c > .0f) {
+		if (b <= .0f) return false;
+		if ((pow(b, 2) - c) < .0f) return false;
+		t = b - sqrt(pow(b, 2) - c);
+		return true;
+	}
+	else {
+		t = b + sqrt(pow(b, 2) - c);
+		return true;
+	}
+
     //calculate a valid t and normal
-	
     if(t < tmax && t > tmin) {
         rec.t = t;
         rec.pos = pointOnRay(r, rec.t);
+        vec3 normal = rec.pos - s.center;
+        normal = normalize(normal);
         rec.normal = normal;
         return true;
     }
