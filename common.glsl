@@ -238,23 +238,31 @@ float schlick(float cosine, float refIdx)
     return kr;
 }
 
+vec3 metalSchlick(float cosine, vec3 F0) {
+    return F0 + (1.0f - F0) * pow(clamp(1.0f - cosine, .0f, 1.0f), 5.0f);
+}
+
 bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
-        //atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
-        vec3 s = rec.pos + rec.normal + normalize(randomInUnitSphere(gSeed));
-        rScattered = createRay(rec.pos, normalize(s)); // idk
+        vec3 s = rec.normal + normalize(randomInUnitSphere(gSeed));
+        rScattered = createRay(rec.pos, normalize(s), rIn.t);
+        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
         return true;
     }
     if(rec.material.type == MT_METAL)
     {
-       //INSERT CODE HERE, consider fuzzy reflections
-        atten = rec.material.specColor;
+        atten = metalSchlick(-dot(rIn.d, rec.normal), rec.material.specColor);
+        vec3 bias = rec.pos + epsilon * rec.normal;
+        vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
+        vec3 s = refletedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
+        rScattered = createRay(rec.pos + bias, normalize(s));
         return true;
     }
     if(rec.material.type == MT_DIALECTRIC)
     {
+        // Correct according to prof code (Beers law, etc)
         atten = vec3(1.0f);
         float niOverNt, sinI, cosI, sinT, cosT, cosine;
 
@@ -384,7 +392,33 @@ vec3 center(MovingSphere mvsphere, float time)
 
 bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 {
+
+    // PROF CODE
+    vec3 oc = r.o - s.center;
+    float a = dot(r.d, r.d);
+    float b = dot (oc, r.d);
+    float c = dot(oc, oc) - (s.radius * s.radius);
+    float discriminant = b * b - a * c;
+    if (discriminant > .0f) {
+        float temp = (-b - sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - s.center) / s.radius;
+            return true;
+        }
+        temp = (-b + sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - s.center) / s.radius;
+            return true;
+        }
+    }
+    return false;
+
     //INSERT YOUR CODE HERE
+    /*
     float b = dot((s.center - r.o), r.d);
 	float c = dot((s.center - r.o), (s.center - r.o)) - pow(s.radius, 2.0f);
     float t;
@@ -399,7 +433,7 @@ bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 		t = b + sqrt(pow(b, 2.0f) - c);
 		return true;
 	}
-
+    
     //calculate a valid t and normal
     if(t < tmax && t > tmin) {
         rec.t = t;
@@ -410,6 +444,7 @@ bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
         return true;
     }
     else return false;
+    */
 }
 
 bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitRecord rec)
