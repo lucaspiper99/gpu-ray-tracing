@@ -232,7 +232,6 @@ struct HitRecord
 
 float schlick(float cosine, float refIdx)
 {
-    //INSERT YOUR CODE HERE
     float R0 = pow((refIdx - 1.0f) / (refIdx + 1.0f), 2.0f);
     float kr = R0 + (1.0f - R0) * pow(1.0f - cosine, 5.0f);
 
@@ -243,10 +242,9 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
-        //INSERT CODE HERE,
-        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
-        vec3 random_point = rec.pos + rec.normal + normalize(randomInUnitSphere(gSeed));
-        rScattered = createRay(rec.pos, normalize(random_point - rec.pos)); // idk
+        //atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
+        vec3 s = rec.pos + rec.normal + normalize(randomInUnitSphere(gSeed));
+        rScattered = createRay(rec.pos, normalize(s)); // idk
         return true;
     }
     if(rec.material.type == MT_METAL)
