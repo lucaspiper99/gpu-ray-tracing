@@ -156,12 +156,10 @@ Ray getRay(Camera cam, vec2 pixel_sample)  //rnd pixel_sample viewport coordinat
     //Calculate eye_offset and ray direction
     vec3 eye_offset = cam.eye + cam.u * ls.x + cam.v * ls.y;
 
-    p = vec3(cam.focusDist * cam.width * (pixel_sample.x  / iResolution.x - 0.5),
-    focusDist * ca.height * (pixel_sample.y  / iResolution.y - 0.5),
-    cam.focusDist * cam.planeDist) - vec3(ls, 0, 0);
+    vec3 p = vec3(cam.focusDist * cam.width * (pixel_sample.x  / iResolution.x - 0.5), cam.focusDist * cam.height * (pixel_sample.y  / iResolution.y - 0.5), cam.focusDist * cam.planeDist) - vec3(ls, 0, 0);
 
-    ray_dir = p.x * cam.u + p.y * cam.v + p.z * cam.n;
-    ray_dir = ray_dir.normalize();
+    vec3 ray_dir = p.x * cam.u + p.y * cam.v + p.z * cam.n;
+    ray_dir = normalize(ray_dir);
     
     return createRay(eye_offset, normalize(ray_dir), time);
 }
@@ -265,7 +263,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         {
             outwardNormal = rec.normal;
             niOverNt = 1.0 / rec.material.refIdx;
-            cosine = -dot(rIn.d, rec.normal); 
+            cosine = -dot(rIn.d, rec.normal);
         }
 
         //Use probabilistic math to decide if scatter a reflected ray or a refracted ray
