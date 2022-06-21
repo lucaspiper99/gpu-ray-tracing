@@ -158,7 +158,7 @@ Ray getRay(Camera cam, vec2 pixel_sample)  //rnd pixel_sample viewport coordinat
 
     float x = cam.focusDist * cam.width * (pixel_sample.x  / iResolution.x - 0.5f);
     float y = cam.focusDist * cam.height * (pixel_sample.y  / iResolution.y - 0.5f);
-    float z = cam.focusDist * cam.planeDist;
+    float z = -cam.focusDist * cam.planeDist;
 
     vec3 p = vec3(x, y, z) - vec3(ls, 0.0f);
 
@@ -399,6 +399,7 @@ bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
     float b = dot (oc, r.d);
     float c = dot(oc, oc) - (s.radius * s.radius);
     float discriminant = b * b - a * c;
+
     if (discriminant > .0f) {
         float temp = (-b - sqrt(discriminant)) / a;
         if (temp < tmax && temp > tmin) {
@@ -453,9 +454,34 @@ bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitReco
     bool outside;
     float t;
 
+    vec3 movingCenter = center(s, r.t);
 
+    vec3 oc = r.o - movingCenter;
+    float a = dot(r.d, r.d);
+    float b = dot (oc, r.d);
+    float c = dot(oc, oc) - (s.radius * s.radius);
+    float discriminant = b * b - a * c;
+    
+    if (discriminant > .0f) {
+        float temp = (-b - sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - movingCenter) / s.radius;
+            return true;
+        }
+        temp = (-b + sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - movingCenter) / s.radius;
+            return true;
+        }
+    }
+    return false;
+
+    /*
      //INSERT YOUR CODE HERE
-     
      //Calculate the moving center
     vec3 movingCenter = center(s, r.t);
 
@@ -483,6 +509,7 @@ bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitReco
         return true;
     }
     else return false;
+    */
 }
 
 struct pointLight {

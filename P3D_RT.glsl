@@ -11,14 +11,14 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
     rec.t = tmax;
-   
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+
+    if(hit_triangle(createTriangle(vec3(-10.0, -0.05, 10.0), vec3(10.0, -0.05, 10.0), vec3(-10.0, -0.05, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
 
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    if(hit_triangle(createTriangle(vec3(-10.0, -0.05, -10.0), vec3(10.0, -0.05, 10), vec3(10.0, -0.05, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
@@ -48,27 +48,39 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     }
 
     if(hit_sphere(
-        createSphere(vec3(0.0, 1.0, 0.0), 1.0),
+        createSphere(vec3(-1.5, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createDialectricMaterial(vec3(0.0), 1.333, 0.0);
+        rec.material = createDialectricMaterial(vec3(0.0), 1.3, 0.0);
     }
 
 if(hit_sphere(
-        createSphere(vec3(0.0, 1.0, 0.0), -0.95),
+        createSphere(vec3(-1.5, 1.0, 0.0), -0.55),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createDialectricMaterial(vec3(0.0), 1.333, 0.0);
+        rec.material = createDialectricMaterial(vec3(0.0), 1.3, 0.0);
+    }
+
+    if(hit_sphere(
+        createSphere(vec3(1.5, 1.0, 0.0), 1.0),
+        r,
+        tmin,
+        rec.t,
+        rec))
+    {
+        hit = true;
+        rec.material = createDialectricMaterial(vec3(0.0, 0.7, 0.9), 1.05, 0.0);
     }
    
+
     int numxy = 5;
     
     for(int x = -numxy; x < numxy; ++x)
@@ -154,7 +166,7 @@ if(hit_sphere(
                     {
                         hit = true;
                         rec.material.type = MT_DIALECTRIC;
-                        rec.material = createDialectricMaterial(hash3(seed), 1.2, 0.0);
+                        rec.material = createDialectricMaterial(hash3(seed), 1.5, 0.0);
                     }
                 }
             }
