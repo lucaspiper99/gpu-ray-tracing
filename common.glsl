@@ -279,7 +279,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             niOverNt = 1.0f / rec.material.refIdx;
         }
 
-        float reflectProb;
+        float reflectProb, cosT;
         vec3 v = rIn.d * -1.0;
         vec3 vt = (outwardNormal * dot(v, outwardNormal)) - v;
         float sinI = length(vt);
@@ -288,7 +288,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 
         if (sinT < 1.0f)  // non-total reflection
         {
-            float cosT = sqrt(1.0f - pow(sinT, 2.0f));
+            cosT = sqrt(1.0f - pow(sinT, 2.0f));
             cosine = (dot(rIn.d, outwardNormal) > 0.0f) ? cosT : cosI;
             reflectProb = schlick(cosine, rec.material.refIdx);
         }
@@ -300,13 +300,13 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         if(hash1(gSeed) < reflectProb)  //Reflection
         {
             vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
-            rScattered = createRay(rec.pos, normalize(refletedRayDirection));
+            rScattered = createRay(rec.pos + rec.normal * epsilon, normalize(refletedRayDirection));
             // atten *= vec3(reflectProb); not necessary since we are only scattering reflectProb rays and not all reflected rays
         }
         else  //Refraction
         {
-            vec3 refractedRayDirection = refract(rIn.d, rec.normal, niOverNt);
-            rScattered = createRay(rec.pos, normalize(refractedRayDirection));
+            vec3 refractedRayDirection = normalize(vt) * sinT - outwardNormal * cosT;
+            rScattered = createRay(rec.pos - outwardNormal * epsilon, normalize(refractedRayDirection));
             // atten *= vec3(1.0 - reflectProb); not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
         }
 
