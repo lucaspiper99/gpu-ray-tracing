@@ -262,38 +262,50 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     }
     if(rec.material.type == MT_DIALECTRIC)
     {
-        // Correct according to prof code (Beers law, etc)
+
         atten = vec3(1.0f);
-        float niOverNt, sinI, cosI, sinT, cosT, cosine;
+        vec3 outwardNormal;
+        float niOverNt, cosine;
 
-        niOverNt = (dot(rIn.d, rec.normal) > .0f) ? rec.material.refIdx : 1.0 / rec.material.refIdx;
-        vec3 outwardNormal = (dot(rIn.d, rec.normal) > .0f) ? -rec.normal : rec.normal;
-
-        vec3 v = rIn.d * -1.0f;
-        vec3 vt = (outwardNormal * dot(v, outwardNormal)) - v;
-
-        sinI = length(vt);
-        cosI = sqrt(1.0f - pow(sinI, 2.0f));
-        sinT = niOverNt * sinI;
-
-        if (sinT > 1.0f) {
-            float R0 = pow((niOverNt - 1.0f) / (niOverNt + 1.0f), 2.0f);
-            cosT = sqrt(1.0f - pow(sinT, 2.0f));
-            float cosine = (dot(rIn.d, rec.normal) > .0f) ? cosT : cosI;
+        if (dot(rIn.d, rec.normal) > .0f)  // from inside
+        {
+            outwardNormal = -rec.normal;
+            niOverNt = rec.material.refIdx;
+            atten = exp(-rec.material.refractColor * rec.t);  // Beer's Law
+        }
+        else  // from outside
+        {
+            outwardNormal = rec.normal;
+            niOverNt = 1.0f / rec.material.refIdx;
         }
 
-        //Use probabilistic math to decide if scatter a reflected ray or a refracted ray
-        float reflectProb = (sinT > 1.0f) ? 1.0f : schlick(cosine, niOverNt);
+        float reflectProb;
+        vec3 v = rIn.d * -1.0;
+        vec3 vt = (outwardNormal * dot(v, outwardNormal)) - v;
+        float sinI = length(vt);
+        float cosI = sqrt(1.0f - pow(sinI, 2.0f));
+        float sinT = niOverNt * sinI;
+
+        if (sinT < 1.0f)  // non-total reflection
+        {
+            float cosT = sqrt(1.0f - pow(sinT, 2.0f));
+            cosine = (dot(rIn.d, outwardNormal) > 0.0f) ? cosT : cosI;
+            reflectProb = schlick(cosine, rec.material.refIdx);
+        }
+        else  // total reflection
+        {
+            reflectProb = 1.0f;
+        }
 
         if(hash1(gSeed) < reflectProb)  //Reflection
         {
-            vec3 refletedRayDirection = (outwardNormal * (2.0f * dot(v, outwardNormal)) - v);
+            vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
             rScattered = createRay(rec.pos, normalize(refletedRayDirection));
             // atten *= vec3(reflectProb); not necessary since we are only scattering reflectProb rays and not all reflected rays
         }
         else  //Refraction
         {
-            vec3 refractedRayDirection = normalize(vt) * sinT - outwardNormal * cosT;
+            vec3 refractedRayDirection = refract(rIn.d, rec.normal, niOverNt);
             rScattered = createRay(rec.pos, normalize(refractedRayDirection));
             // atten *= vec3(1.0 - reflectProb); not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
         }
