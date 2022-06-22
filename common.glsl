@@ -312,7 +312,7 @@ Triangle createTriangle(vec3 v0, vec3 v1, vec3 v2)
 
 bool hit_triangle(Triangle tri, Ray r, float tmin, float tmax, out HitRecord rec)
 {
-    //INSERT YOUR CODE HERE
+    // Tomas Möller, Ben Trumbore “Fast, Minimum Storage Ray/Triangle Intersection”, 1997
     vec3 v1 = tri.b - tri.a;
 	vec3 v2 = tri.c - tri.a;
 	vec3 v3 = r.d * -1.0;
@@ -330,6 +330,61 @@ bool hit_triangle(Triangle tri, Ray r, float tmin, float tmax, out HitRecord rec
 
     vec3 normal = cross((tri.b - tri.a), (tri.c - tri.a));
 	normal = normalize(normal);
+
+    //calculate a valid t and normal
+    if(t < tmax && t > tmin)
+    {
+        rec.t = t;
+        rec.normal = normal;
+        rec.pos = pointOnRay(r, rec.t);
+        return true;
+    }
+    return false;
+}
+
+struct Quad {vec3 a; vec3 b; vec3 c; vec3 d;};
+
+Quad createQuad(vec3 v0, vec3 v1, vec3 v2, vec3 v3)
+{
+    Quad q;
+    q.a = v0; q.b = v1; q.c = v2; q.d = v3;
+    return q;
+}
+
+
+bool hit_quad(Quad quad, Ray r, float tmin, float tmax, out HitRecord rec)
+{
+    // Retrieved from https://www.shadertoy.com/view/tsBBWW
+    // Calculates normal and flip vertices order, if needed
+    vec3 normal = normalize(cross(quad.b - quad.a, quad.c - quad.a));
+    if (dot(normal, r.d) > 0.0f)
+    {
+        normal *= -1.0f;
+		vec3 temp = quad.d;
+        quad.d = quad.a;
+        quad.a = temp;
+        temp = quad.b;
+        quad.b = quad.c;
+        quad.c = temp;
+    }
+    
+    // -----------------------------------------------------------------
+
+    // Adapted for Quads from Tomas Möller, Ben Trumbore
+    // “Fast, Minimum Storage Ray/Triangle Intersection”, 1997
+    vec3 v1 = quad.b - quad.a;
+	vec3 v2 = quad.d - quad.a;
+	vec3 v3 = r.d * -1.0;
+	vec3 vs = r.o - quad.a;
+
+	float det = dot(v1, cross(v2, v3));
+	if (det == 0.0f) return false;
+
+	float beta = dot(vs, cross(v2, v3)) / det;
+	float gamma = dot(v1, cross(vs, v3)) / det;
+	float t = dot(v1, cross(v2, vs)) / det;
+
+	if (beta < 0.0f || beta > 1.0f || gamma < 0.0f || gamma > 1.0f) return false;
 
     //calculate a valid t and normal
     if(t < tmax && t > tmin)
