@@ -7,6 +7,9 @@
  #include "./common.glsl"
  #iChannel0 "self"
 
+bool SOFT_SHADOWS = false;
+bool SOFT_SHADOWS_GRID = false;
+
 bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
@@ -58,7 +61,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDialectricMaterial(vec3(0.0), 1.3, 0.0);
     }
 
-if(hit_sphere(
+    if(hit_sphere(
         createSphere(vec3(-1.5, 1.0, 0.0), -0.55),
         r,
         tmin,
@@ -184,7 +187,28 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
    //INSERT YOUR CODE HERE
 
    // PROF CODE
-    vec3 l = normalize(pl.pos - rec.pos);  // light vector
+   vec3 lightPos;
+
+    if (SOFT_SHADOWS)  // Soft shadows: random light source point from area light
+    {
+        vec3 a = vec3(5.0f, 0.0f, 0.0f);
+        vec3 b = vec3(0.0f, 0.0f, 5.0f);
+
+        lightPos = pl.pos + (hash1(gSeed) * a) + (hash1(gSeed) * b);
+    }
+    else if (SOFT_SHADOWS_GRID)  // Soft shadows: random light source point from N by N grid
+    {
+        float N = 5.0f;
+        float q = floor(hash1(gSeed) * N);
+        float p = floor(hash1(gSeed) * N);
+
+        lightPos = pl.pos + vec3(1.0f, 0.0f, 0.0f) * p + vec3(0.0f, 0.0f, 1.0f) * q;
+    }
+    else {
+        lightPos = pl.pos;
+    }
+
+    vec3 l = normalize(lightPos - rec.pos);  // light vector
     float intensity = max(dot(rec.normal, l), .0f);
     Ray shadowRay = createRay(rec.pos + epsilon * rec.normal, l);
     float dist = length(pl.pos - rec.pos);
@@ -230,15 +254,9 @@ vec3 rayColor(Ray r)
     {
         if(hit_world(r, 0.001, 10000.0, rec))
         {
-            // PROF CODE
             //calculate direct lighting with 3 white point lights:
             if (dot(r.d, rec.normal) < 0.0f)
             {
-                //createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
-                //createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
-                //createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
-                //col += directlighting(createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
-
                 col += directlighting(createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                 col += directlighting(createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                 col += directlighting(createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;

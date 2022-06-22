@@ -238,6 +238,7 @@ float schlick(float cosine, float refIdx)
     return kr;
 }
 
+// PROF CODE
 vec3 metalSchlick(float cosine, vec3 F0) {
     return F0 + (1.0f - F0) * pow(clamp(1.0f - cosine, .0f, 1.0f), 5.0f);
 }
@@ -246,18 +247,17 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
-        vec3 s = rec.normal + normalize(randomInUnitSphere(gSeed));
-        rScattered = createRay(rec.pos, normalize(s), rIn.t);
         atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
+        vec3 s = rec.normal + normalize(randomInUnitSphere(gSeed));
+        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s), rIn.t);
         return true;
     }
     if(rec.material.type == MT_METAL)
     {
         atten = metalSchlick(-dot(rIn.d, rec.normal), rec.material.specColor);
-        vec3 bias = rec.pos + epsilon * rec.normal;
         vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
         vec3 s = refletedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
-        rScattered = createRay(rec.pos + bias, normalize(s));
+        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s), rIn.t);
         return true;
     }
     if(rec.material.type == MT_DIALECTRIC)
@@ -267,13 +267,13 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         vec3 outwardNormal;
         float niOverNt, cosine;
 
-        if (dot(rIn.d, rec.normal) > .0f)  // from inside
+        if (dot(rIn.d, rec.normal) > .0f)  // From inside
         {
             outwardNormal = -rec.normal;
             niOverNt = rec.material.refIdx;
             atten = exp(-rec.material.refractColor * rec.t);  // Beer's Law
         }
-        else  // from outside
+        else  // From outside
         {
             outwardNormal = rec.normal;
             niOverNt = 1.0f / rec.material.refIdx;
@@ -300,13 +300,13 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         if(hash1(gSeed) < reflectProb)  //Reflection
         {
             vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
-            rScattered = createRay(rec.pos + rec.normal * epsilon, normalize(refletedRayDirection));
+            rScattered = createRay(rec.pos + rec.normal * epsilon, normalize(refletedRayDirection), rIn.t);
             // atten *= vec3(reflectProb); not necessary since we are only scattering reflectProb rays and not all reflected rays
         }
         else  //Refraction
         {
             vec3 refractedRayDirection = normalize(vt) * sinT - outwardNormal * cosT;
-            rScattered = createRay(rec.pos - outwardNormal * epsilon, normalize(refractedRayDirection));
+            rScattered = createRay(rec.pos - outwardNormal * epsilon, normalize(refractedRayDirection), rIn.t);
             // atten *= vec3(1.0 - reflectProb); not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
         }
 
@@ -405,123 +405,63 @@ vec3 center(MovingSphere mvsphere, float time)
 bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 {
 
-    // PROF CODE
-    vec3 oc = r.o - s.center;
-    float a = dot(r.d, r.d);
-    float b = dot (oc, r.d);
-    float c = dot(oc, oc) - (s.radius * s.radius);
-    float discriminant = b * b - a * c;
-
-    if (discriminant > .0f) {
-        float temp = (-b - sqrt(discriminant)) / a;
-        if (temp < tmax && temp > tmin) {
-            rec.t = temp;
-            rec.pos = pointOnRay(r, rec.t);
-            rec.normal = (rec.pos - s.center) / s.radius;
-            return true;
-        }
-        temp = (-b + sqrt(discriminant)) / a;
-        if (temp < tmax && temp > tmin) {
-            rec.t = temp;
-            rec.pos = pointOnRay(r, rec.t);
-            rec.normal = (rec.pos - s.center) / s.radius;
-            return true;
-        }
-    }
-    return false;
-
     //INSERT YOUR CODE HERE
-    /*
-    float b = dot((s.center - r.o), r.d);
-	float c = dot((s.center - r.o), (s.center - r.o)) - pow(s.radius, 2.0f);
+    vec3 rayDirection = normalize(r.d);
+    vec3 oc = s.center - r.o;
+
+    float b = dot(oc, rayDirection);
+    float c = dot(oc, oc) - pow(s.radius, 2.0f);
+    float discriminant = pow(b, 2.0f) - c;
     float t;
-    
+
 	if (c > .0f) {
 		if (b <= .0f) return false;
-		if ((pow(b, 2.0f) - c) < .0f) return false;
-		t = b - sqrt(pow(b, 2.0f) - c);
-		return true;
+		if (discriminant <= .0f) return false;
+		t = b - sqrt(discriminant);
 	}
 	else {
-		t = b + sqrt(pow(b, 2.0f) - c);
-		return true;
+		t = b + sqrt(discriminant);
 	}
     
     //calculate a valid t and normal
     if(t < tmax && t > tmin) {
         rec.t = t;
         rec.pos = pointOnRay(r, rec.t);
-        vec3 normal = rec.pos - s.center;
-        normal = normalize(normal);
-        rec.normal = normal;
+        rec.normal = normalize(rec.pos - s.center);
         return true;
     }
-    else return false;
-    */
+    return false;
 }
 
 bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 {
-    float B, C, delta;
-    bool outside;
+    //INSERT YOUR CODE HERE
+    vec3 movingCenter = center(s, r.t);
+    vec3 rayDirection = normalize(r.d);
+    vec3 oc = movingCenter - r.o;
+
+    float b = dot(oc, rayDirection);
+    float c = dot(oc, oc) - pow(s.radius, 2.0f);
+    float discriminant = pow(b, 2.0f) - c;
     float t;
-
-    vec3 movingCenter = center(s, r.t);
-
-    vec3 oc = r.o - movingCenter;
-    float a = dot(r.d, r.d);
-    float b = dot (oc, r.d);
-    float c = dot(oc, oc) - (s.radius * s.radius);
-    float discriminant = b * b - a * c;
-    
-    if (discriminant > .0f) {
-        float temp = (-b - sqrt(discriminant)) / a;
-        if (temp < tmax && temp > tmin) {
-            rec.t = temp;
-            rec.pos = pointOnRay(r, rec.t);
-            rec.normal = (rec.pos - movingCenter) / s.radius;
-            return true;
-        }
-        temp = (-b + sqrt(discriminant)) / a;
-        if (temp < tmax && temp > tmin) {
-            rec.t = temp;
-            rec.pos = pointOnRay(r, rec.t);
-            rec.normal = (rec.pos - movingCenter) / s.radius;
-            return true;
-        }
-    }
-    return false;
-
-    /*
-     //INSERT YOUR CODE HERE
-     //Calculate the moving center
-    vec3 movingCenter = center(s, r.t);
-
-	float b = dot((movingCenter - r.o), r.d);
-	float c = dot((movingCenter - r.o), (movingCenter - r.o)) - pow(s.radius, 2.0f);
 
 	if (c > .0f) {
 		if (b <= .0f) return false;
-		if ((pow(b, 2.0f) - c) < .0f) return false;
-		t = b - sqrt(pow(b, 2.0f) - c);
-		return true;
+		if (discriminant <= .0f) return false;
+		t = b - sqrt(discriminant);
 	}
 	else {
-		t = b + sqrt(pow(b, 2.0f) - c);
-		return true;
+		t = b + sqrt(discriminant);
 	}
-
+    
     //calculate a valid t and normal
     if(t < tmax && t > tmin) {
         rec.t = t;
         rec.pos = pointOnRay(r, rec.t);
-        vec3 normal = rec.pos - movingCenter;
-        normal = normalize(normal);
-        rec.normal = normal;
+        rec.normal = normalize(rec.pos - movingCenter);
         return true;
     }
-    else return false;
-    */
+    return false;
 }
 
 struct pointLight {
