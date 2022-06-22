@@ -6,6 +6,7 @@
 
  #include "./common.glsl"
  #iChannel0 "self"
+ #iKeyboard
 
 
 // ------------------------------------------------
@@ -298,20 +299,71 @@ vec3 rayColor(Ray r)
 
 #define MAX_SAMPLES 10000.0
 
+mat3 rotateY(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        vec3(c, 0, s),
+        vec3(0, 1, 0),
+        vec3(-s, 0, c)
+    );
+}
+
+float isToggled(float keyCode) {
+    return texelFetch(iKeyboard, ivec2(keyCode, 2), 0).x;
+}
+
+const float KEY_LEFT  = 37.0f;
+const float KEY_UP    = 38.0f;
+const float KEY_RIGHT = 39.0f;
+const float KEY_DOWN  = 40.0f;
+
+const ivec2 camTransforn = ivec2(0, 0);
+
+
 void main()
 {
     gSeed = float(baseHash(floatBitsToUint(gl_FragCoord.xy))) / float(0xffffffffU) + iTime;
 
     vec2 mouse = iMouse.xy / iResolution.xy;
     mouse.x = mouse.x * 2.0 - 1.0;
-
-    vec3 camPos = vec3(mouse.x * 10.0, mouse.y * 5.0, 8.0);
+    vec3 camPos = vec3(mouse.x * 10.0, mouse.y * 5.0, 8.0); 
     vec3 camTarget = vec3(0.0, 0.0, -1.0);
     float fovy = 60.0;
     float aperture = 0.0;
     float distToFocus = 1.0;
     float time0 = 0.0;
     float time1 = 1.0;
+    
+    vec3 pos2Target = camTarget - camPos;
+    float zoom = texelFetch(iChannel0, camTransforn, 0).z; 
+    float theta = texelFetch(iChannel0, camTransforn, 0).w;
+
+    if(isToggled(KEY_UP) != .0f || isToggled(KEY_DOWN) != .0f) {
+        
+        zoom += iTimeDelta * ((isToggled(KEY_UP) != .0f)? 1.0f : -1.0f); // make zoom dependent on fps and not absolute time
+        
+        if (int(gl_FragCoord.x) == camTransforn.x && int(gl_FragCoord.y) == camTransforn.y) {
+            gl_FragColor = vec4(texelFetch(iChannel0, camTransforn, 0).xy, zoom, texelFetch(iChannel0, camTransforn, 0).w);
+        }
+    }
+
+    if(isToggled(KEY_LEFT) != .0f || isToggled(KEY_RIGHT) != .0f) {
+        theta += sin(iTimeDelta) / 10.f * pi * ((isToggled(KEY_RIGHT) != .0f)? 1.0f : -1.0f); // make theta dependent on fps and not absolute time
+
+        if (int(gl_FragCoord.x) == camTransforn.x && int(gl_FragCoord.y) == camTransforn.y) {
+            gl_FragColor = vec4(texelFetch(iChannel0, camTransforn, 0).xyz, theta);
+        }
+    }
+    
+    camPos += zoom * normalize(pos2Target);
+
+    pos2Target = camTarget - camPos; // changed due to zoom 
+
+    vec3 rotated = pos2Target * rotateY(theta); // rotate pos2Target so cam orbits around the target and not the scene origin
+
+    camPos = camTarget - rotated;
+
     Camera cam = createCamera(
         camPos,
         camTarget,
@@ -332,6 +384,17 @@ void main()
     //vec2 ps = gl_FragCoord.xy;
     vec3 color = rayColor(getRay(cam, ps));
 
+
+    if (int(gl_FragCoord.x) == camTransforn.x && int(gl_FragCoord.y) == camTransforn.y) {
+        gl_FragColor = vec4(texelFetch(iChannel0, camTransforn, 0).xy, zoom, theta);
+        return;
+    }
+
+    if(isToggled(KEY_LEFT) != .0f || isToggled(KEY_UP) != .0f || isToggled(KEY_RIGHT) != .0f || isToggled(KEY_DOWN) != .0f) {
+        // clear frames so there's no distortion/blurriness from zoom and orbital rotation
+        gl_FragColor = vec4(toGamma(color), 1.0);
+        return;
+    }    
     if(iMouseButton.x != 0.0 || iMouseButton.y != 0.0)
     {
         gl_FragColor = vec4(toGamma(color), 1.0);  //samples number reset = 1
