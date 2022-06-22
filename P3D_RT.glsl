@@ -12,10 +12,11 @@
 
 // Scenes (only one should be selected)
 bool SHIRLEY = false;
-bool CORNELL_BOX = true;
+bool CORNELL_BOX_BOXES = false;
+bool CORNELL_BOX_SPHERES = true;
 
 // Extra: Soft Shadows (only one should be selected)
-bool SOFT_SHADOWS = false;
+bool SOFT_SHADOWS = true;
 bool SOFT_SHADOWS_GRID  = false;
 
 // ------------------------------------------------
@@ -38,14 +39,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             hit = true;
             rec.material = createDiffuseMaterial(vec3(0.9));
         }
-
-        /*
-        if(hit_quad(createQuad(vec3(10.0, -0.05, 10.0), vec3(10.0, -0.05, -10.0), vec3(-10.0, -0.05, -10.0), vec3(-10.0, -0.05, 10.0)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.9));
-        }
-        */
 
         if(hit_sphere(
             createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
@@ -197,47 +190,106 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         }
     }
 
-    if (CORNELL_BOX) {
+    float yShift, zShift, margin, boxSize, boxHeight;
 
-        float yShift = -1.5f;
-        float zShift = -3.5f;
-        float margin = 0.05f;
-        float boxSize = 6.0f;
+    if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES) {
+
+        yShift = -3.5f;
+        zShift = -8.0f;
+        margin = 0.05f;
+        boxSize = 6.0f;
+        boxHeight = 8.0f;
 
         // Floor
         if(hit_quad(createQuad(vec3((boxSize+margin), -margin+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
+            rec.material = createDiffuseMaterial(vec3(1.0));
         }
 
         // Ceiling
-        if(hit_quad(createQuad(vec3((boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        if(hit_quad(createQuad(vec3((boxSize+margin), boxHeight+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), boxHeight+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxHeight+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxHeight+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
+            rec.material = createDiffuseMaterial(vec3(1.0));
         }
         
         // Left Wall (Red)
-        if(hit_quad(createQuad(vec3(-boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(-boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        if(hit_quad(createQuad(vec3(-boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(-boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxHeight+margin)+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxHeight+margin)+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
             rec.material = createDiffuseMaterial(vec3(0.95, margin, margin));
         }
         
         // Right Wall (Green)
-        if(hit_quad(createQuad(vec3(boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, -(boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        if(hit_quad(createQuad(vec3(boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxHeight+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxHeight+yShift, -(boxSize+margin)+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
             rec.material = createDiffuseMaterial(vec3(margin, 0.95, margin));
         }
 
         // Front Wall
-        if(hit_quad(createQuad(vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -boxSize+zShift), vec3((boxSize+margin), boxSize+yShift, -boxSize+zShift), vec3(-(boxSize+margin), boxSize+yShift, -boxSize+zShift)), r, tmin, rec.t, rec))
+        if(hit_quad(createQuad(vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -boxSize+zShift), vec3((boxSize+margin), boxHeight+yShift, -boxSize+zShift), vec3(-(boxSize+margin), boxHeight+yShift, -boxSize+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
+            rec.material = createDiffuseMaterial(vec3(1.0));
         }
+    }
+
+    if (CORNELL_BOX_BOXES) {
+
+        if (hit_box(createBox(vec3(-2.5, 0.0+yShift, 0.0+zShift), vec3(0.5f, 5.0+yShift , 3.0+zShift)), r, tmin, rec.t, rec)) {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(0.0, 0.2, 0.8), 1.5, 0.05);
+        }
+
+        if (hit_box(createBox(vec3(-5.0f, 0.0+yShift, -5.0+zShift), vec3(5.5f, 2.0+yShift ,-3.0+zShift)), r, tmin, rec.t, rec)) {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.3, 0.1, 0.95));
+        }
+
+        if (hit_box(createBox(vec3(5.0f, 1.0+yShift, -1.0+zShift), vec3(5.5f, 7.0+yShift , 5.0+zShift)), r, tmin, rec.t, rec)) {
+            hit = true;
+            rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.0);
+        }
+
+    }
+
+    if (CORNELL_BOX_SPHERES) {
+
+        if(hit_sphere(
+            createSphere(vec3(4.0f, 2.0+yShift, -2.0+zShift), 2.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createMetalMaterial(vec3(0.8, 0.1, 0.8), 0.05);
+        }
+
+        if(hit_sphere(
+            createSphere(vec3(-.5f, 2.0+yShift, 2.0+zShift), 2.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(0.0, 0.2, 0.9), 1.5, 0.0);
+        }
+
+        if(hit_sphere(
+            createSphere(vec3(-3.0f, 5.0+yShift, -1.0+zShift), 2.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.5, 0.6, 0.7));
+        }
+
     }
 
     return hit;
@@ -321,14 +373,13 @@ vec3 rayColor(Ray r)
                     col += directlighting(createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                     col += directlighting(createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                 }
-                if (CORNELL_BOX) {
-                    float boxSize = 6.0f;
-                    float yShift = -1.5f;
-                    float zShift = -3.5f;
-                    col += directlighting(createPointLight(vec3(-0.1, boxSize+yShift-.2, -0.1+zShift), vec3(1.0)), r, rec) * throughput;
-                    col += directlighting(createPointLight(vec3(-0.1, boxSize+yShift-.2, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
-                    col += directlighting(createPointLight(vec3(0.1, boxSize+yShift-.2, -0.1+zShift), vec3(1.0)), r, rec) * throughput;
-                    col += directlighting(createPointLight(vec3(0.1, boxSize+yShift-.2, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
+                if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES) {
+                    float yShift = -3.5f;
+                    float zShift = -8.0f;
+                    float boxHeight = 8.0f;
+                    col += directlighting(createPointLight(vec3(-0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
+                    col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, -0.1+zShift), vec3(1.0)), r, rec) * throughput;
+                    col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
                 }
 
             }

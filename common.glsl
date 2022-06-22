@@ -397,6 +397,121 @@ bool hit_quad(Quad quad, Ray r, float tmin, float tmax, out HitRecord rec)
     return false;
 }
 
+struct Box {
+    vec3 minPoint, maxPoint;
+};
+
+Box createBox(vec3 minPoint, vec3 maxPoint){
+    Box b;
+    b.minPoint = minPoint;
+    b.maxPoint = maxPoint;
+    return b;
+}
+
+// Kay & Kajiya algorithm
+bool hit_box(Box box, Ray r, float tmin, float tmax, out HitRecord rec) {
+
+	float ox = r.o.x;
+	float oy = r.o.y;
+	float oz = r.o.z;
+
+	float dx = r.d.x;
+	float dy = r.d.y;
+	float dz = r.d.z;
+
+	float tx_min, ty_min, tz_min, tx_max, ty_max, tz_max;
+
+	// CALCULATE INTERSECTIONS
+	float a = 1.0f / dx;
+	if (a >= 0.0f) {
+		tx_min = (box.minPoint.x - ox) * a;
+		tx_max = (box.maxPoint.x - ox) * a;
+	}
+	else { 
+		tx_min = (box.maxPoint.x - ox) * a;
+		tx_max = (box.minPoint.x - ox) * a;
+	}
+
+	float b = 1.0f / dy;
+	if (b >= 0.0f) {
+		ty_min = (box.minPoint.y - oy) * b;
+		ty_max = (box.maxPoint.y - oy) * b;
+	}
+	else {
+		ty_min = (box.maxPoint.y - oy) * b;
+		ty_max = (box.minPoint.y - oy) * b;
+	}
+
+	float c = 1.0f / dz;
+	if (c >= 0.0f) {
+		tz_min = (box.minPoint.z - oz) * c;
+		tz_max = (box.maxPoint.z - oz) * c;
+	}
+	else {
+		tz_min = (box.maxPoint.z - oz) * c;
+		tz_max = (box.minPoint.z - oz) * c;
+	}
+
+	float tE, tL; // Entering and leaving t values
+	vec3 face_in, face_out; // Normals
+
+	// FIND LARGEST ENTERING T VALUE
+	if (tx_min > ty_min) {
+		tE = tx_min;
+		face_in = (a >= 0.0f) ? vec3(-1.0f, 0.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+	}
+	else {
+		tE = ty_min;
+		face_in = (b >= 0.0f) ? vec3(0.0f, -1.0f, 0.0f) : vec3(0.0f, 1.0f, 0.0f);
+	}
+	if (tz_min > tE) {
+		tE = tz_min;
+		face_in = (c >= 0.0f) ? vec3(0.0f, 0.0f, -1.0f) : vec3(0.0f, 0.0f, 1.0f);
+	}
+
+	// FIND SMALLEST LEAVING T VALUE
+	if (tx_max < ty_max) {
+		tL = tx_max;
+		face_out = (a >= 0.0f) ? vec3(1.0f, 0.0f, 0.0f) : vec3(-1.0f, 0.0f, 0.0f);
+	}
+	else {
+		tL = ty_max;
+		face_out = (b >= 0.0f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(0.0f, -1.0f, 0.0f);
+	}
+	if (tz_max < tL) {
+		tL = tz_max;
+		face_out = (c >= 0.0f) ? vec3(0.0f, 0.0f, 1.0f) : vec3(0.0f, 0.0f, -1.0f);
+	}
+
+
+    float t;
+    vec3 normal;
+
+	// Condition to hit
+	if (tE < tL && tL > 0.0f) {
+		if (tE > 0.0f) {
+		// ray hits outside surface
+			t = tE;
+			normal = face_in;
+		}
+		else {
+		// ray hits inside surface
+			t = tL;
+			normal = face_out;
+		}
+
+        //calculate a valid t and normal
+        if(t < tmax && t > tmin)
+        {
+            rec.t = t;
+            rec.normal = normal;
+            rec.pos = pointOnRay(r, rec.t);
+            return true;
+        }
+	}
+	return false;
+}
+
 struct Sphere
 {
     vec3 center;
