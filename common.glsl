@@ -449,6 +449,210 @@ bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitReco
     return false;
 }
 
+struct AAC {
+    vec3 base, apex, normal;
+    float baseR, apexR;
+};
+
+AAC createAAC(vec3 base, vec3 apex, float baseR, float apexR) {
+    AAC c;
+    c.base = base;
+    c.apex = apex;
+    c.baseR = baseR;
+    c.apexR = apexR;
+
+    return c;
+}
+
+bool hit_AAC(AAC c, Ray r, float tmin, float tmax, out HitRecord rec) {
+    vec3 base = c.base;
+    vec3 apex = c.apex;
+    float baseR = c.baseR;
+    float apexR = c.apexR;
+
+    float t;
+
+    bool x = base.x != apex.x;
+    bool y = base.y != apex.y;
+    bool z = base.z != apex.z;
+
+    if((x || y) && (x || z) && (y || z)) return false;
+
+    vec3 d = normalize(r.d);
+    vec3 o = r.o;
+
+    if (c.baseR == c.apexR) {
+        float a = x ? pow(d.z, 2.0f) + pow(d.y, 2.0f) : y ? pow(d.x, 2.0f) + pow(d.z, 2.0f) : pow(d.x, 2.0f) + pow(d.y, 2.0f);
+		float b = x ? d.z * (o.z - base.z) + d.y * (o.y - base.y) : y ? d.x * (o.x - base.x) + d.z * (o.z - base.z) : d.x * (o.x - base.x) + d.y * (o.y - base.y);
+		float c = x ? pow(o.z - base.z, 2.0f) + pow(o.y - base.y, 2.0f) - pow(baseR, 2.0f) : y ? pow(o.x - base.x, 2.0f) + pow(o.z - base.z, 2.0f) - pow(baseR, 2.0f) : pow(o.x - base.x, 2.0f) + pow(o.y - base.y, 2.0f) - pow(baseR, 2.0f);
+
+		float discriminant = pow(b, 2.0f) - a * c;
+
+        if (discriminant <= .0f) return false;  // No intersection
+
+		float sol1 = (-1.0f * b - sqrt(discriminant)) / a;
+		float sol2 = (-1.0f * b + sqrt(discriminant)) / a;
+
+		if (sol2 < .0f) return false;  // Cylinder behind ray origin
+
+		// ----------------------------------------------------------------------------------------------------------------------------
+
+		// Minimum and maximum coordenates along axis (coordenates of base/apex planes)
+		float coordMin = x ? min(base.x, apex.x) : y ? min(base.y, apex.y) : min(base.z, apex.z);
+		float coordMax = x ? max(base.x, apex.x) : y ? max(base.y, apex.y) : max(base.z, apex.z);
+
+		// Coordenates of both intersection points along axis
+		float coord1 = x ? (o + d * sol1).x : y ? (o + d * sol1).y : (o + d * sol1).z;
+		float coord2 = x ? (o + d * sol2).x : y ? (o + d * sol2).y : (o + d * sol2).z;
+
+		// Swap base and apex in order to ensure that base.x < apex.x, base.y < apex.y or base.z < apex.z
+		if (coordMin != (x ? base.x : y ? base.y : base.z)) {
+			vec3 temp = base;
+			base = apex;
+			apex = temp;
+		}
+
+		bool baseIntersection = false, apexIntersection = false, sideIntersection = false;
+
+		if (sol1 < .0f)  // Ray origin inside infinite cylinder
+		{
+			float originCoord = x ? o.x : y ? o.y : o.z;
+			bool isInside = (originCoord > coordMin) && (originCoord < coordMax);
+
+			if (isInside && (coord2 < coordMin)) baseIntersection = true;
+			if (!isInside && (coord2 > coordMin) && (length(o - base) < length(o - apex))) baseIntersection = true;
+
+			if (isInside && (coord2 > coordMax)) apexIntersection = true;
+			if (!isInside && (coord2 < coordMax) && (length(o - base) > length(o - apex))) apexIntersection = true;
+
+			if (isInside && (coord2 > coordMin) && (coord2 < coordMax)) {
+				sideIntersection = true;
+				t = sol2;
+			}
+		}
+		else if (sol1 > .0f)  // Cylinder in front of ray origin
+		{
+			// Intersection above and below base/apex planes
+			if (coord1 < coordMin && coord2 < coordMin) return false;
+			if (coord1 > coordMax && coord2 > coordMax) return false;
+
+			t = sol1;
+
+			if (coord1 > coordMin && coord1 < coordMax) sideIntersection = true;
+			if (coord1 < coordMin && coord2 > coordMin) baseIntersection = true;
+			if (coord1 > coordMax && coord2 < coordMax) apexIntersection = true;
+		}
+
+		// Intersection with base plane
+		if (baseIntersection && t < tmax && t > tmin) {
+			rec.normal = normalize(base - apex);
+			rec.t = dot((base - o), rec.normal) / dot(rec.normal, d);
+            rec.pos = pointOnRay(r, rec.t);
+			return true;
+		}
+
+		// Intersection with apex plane
+		if (apexIntersection && t < tmax && t > tmin) {
+			rec.normal = normalize(apex - base);
+			rec.t = dot((apex - o), rec.normal) / dot(rec.normal, d);
+            rec.pos = pointOnRay(r, rec.t);
+			return true;
+		}
+
+		// Intersection with side
+		if (sideIntersection && t < tmax && t > tmin) {
+			vec3 axis = apex - base;
+			vec3 closestOnAxis = base + axis * ((((o + d * t) * axis) - dot(base, axis)) / dot(axis, axis));
+			rec.normal = normalize((o + d * t) - closestOnAxis);
+            rec.t = t;
+            rec.pos = pointOnRay(r, rec.t);
+			return true;
+		}
+    }
+    else if (apexR == .0f)  // Cone
+	{
+		// Minimum and maximum coordenates along axis (coordenates of base/apex planes)
+		float coordMin = x ? min(base.x, apex.x) : y ? min(base.y, apex.y) : min(base.z, apex.z);
+		float coordMax = x ? max(base.x, apex.x) : y ? max(base.y, apex.y) : max(base.z, apex.z);
+
+		float slope = baseR / (coordMax - coordMin);
+
+		float a = x ? pow(d.y, 2.0f) + pow(d.z, 2.0f) - slope * pow(d.x, 2.0f) : y ? pow(d.x, 2.0f) + pow(d.z, 2.0f) - slope * pow(d.y, 2.0f) : pow(d.x, 2.0f) + pow(d.y, 2.0f) - slope * pow(d.z, 2.0f);
+		float b = x ? d.y * (o.y - apex.y) + d.z * (o.z - apex.z) - (slope * d.x * (o.x - apex.x)) : y ? d.x * (o.x - apex.x) + d.z * (o.z - apex.z) - (slope * d.y * (o.y - apex.y)) : d.x * (o.x - apex.x) + d.y * (o.y - apex.y) - (slope * d.z * (o.z - apex.z));
+		float c = x ? pow((o.y - apex.y), 2.0f) + pow((o.z - apex.z), 2.0f) - slope * pow((o.x - apex.x), 2.0f) : y ? pow((o.x - apex.x), 2.0f) + pow((o.z - apex.z), 2.0f) - slope * pow((o.y - apex.y), 2.0f) : pow((o.x - apex.x), 2.0f) + pow((o.y - apex.y), 2.0f) - slope * pow((o.z - apex.z), 2.0f);
+
+		float discriminant = pow(b, 2.0f) - a * c;
+
+		if (discriminant <= .0f) return false;  // No intersection
+
+		float sol1 = (-1.0f * b - sqrt(discriminant)) / a;
+		float sol2 = (-1.0f * b + sqrt(discriminant)) / a;
+
+		// Coordenates of both intersection points along axis
+		float coord1 = x ? (o + d * sol1).x : y ? (o + d * sol1).y : (o + d * sol1).z;
+		float coord2 = x ? (o + d * sol2).x : y ? (o + d * sol2).y : (o + d * sol2).z;
+
+		vec3 axis = (apex - base);
+		float height = length(axis);
+		axis = normalize(axis);
+
+		// distance between base and projection of intersections in axis
+		float c1 = dot(((o + d * sol1) - base), axis);
+		float c2 = dot(((o + d * sol2) - base), axis);
+
+		float originCoord = x ? o.x : y ? o.y : o.z;
+		bool isInside = (originCoord > coordMin) && (originCoord < coordMax);
+
+		if (sol2 < .0f && (c1 < height || c2 > height || c2 < .0f)) return false;
+
+		bool baseIntersection = false, sideIntersection = false;
+
+		if (sol2 < .0f) {
+			if (isInside && c1 > height && c2 > .0f && c2 < height) baseIntersection = true;  // DENTRO
+		}
+		if (sol2 > .0f && sol1 < .0f) {
+			if (c1 > height && c2 > .0f && c2 < height) sideIntersection = true;  // t = sol2;  FORA
+			if (isInside && c2 > .0f && c2 < height) sideIntersection = true;  // t = sol2;  DENTRO
+			if (isInside && c1 > .0f && c1 < height && c2 < .0f) baseIntersection = true;  // DENTRO
+			if (!isInside && c2 > .0f && c2 < height && c1 < .0f) baseIntersection = true;  // FORA
+		}
+		if (sol1 > .0f) {
+
+			if (isInside && c2 > .0f && c2 < height) sideIntersection = true;  // t = sol2;  DENTRO
+			if (c1 > height && c2 > .0f && c2 < height) sideIntersection = true; // t = sol2;
+			if (c1 > .0f && c1 < height) sideIntersection = true; // t = sol1;
+
+			if (c1 < .0f && c2 > .0f && c2 < height) baseIntersection = true;  // FORA
+			if (!isInside && c1 > .0f && c1 < height && c2 > height) baseIntersection = true;  // FORA (DENTRO DO CIL INF)
+		}
+
+		if (sideIntersection) t = (sol1 > .0f && c1 > .0f && c1 < height) ? sol1 : sol2;
+
+		if (baseIntersection && t < tmax && t > tmin) {
+			rec.normal = normalize(base - apex);
+			rec.t = dot((base - o), rec.normal) / dot(rec.normal, d);
+            rec.pos = pointOnRay(r, rec.t);
+
+			return true;
+		}
+
+		// Intersection with side surface
+		if (sideIntersection && t < tmax && t > tmin) {
+			axis = axis * height;
+			vec3 closestOnAxis = base + axis * ((((o + d * t) * axis) - dot(base, axis)) / dot(axis, axis));
+			vec3 cylinderNormal = normalize((o + d * t) - closestOnAxis);
+			vec3 toApex = normalize(apex - (o + d * t));
+			rec.normal = normalize(cross(cross(toApex, cylinderNormal), toApex));
+            rec.t = t;
+            rec.pos = pointOnRay(r, rec.t);
+
+			return true;
+		}
+	}
+	return false;
+
+}
+
 struct pointLight {
     vec3 pos;
     vec3 color;
