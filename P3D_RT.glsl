@@ -7,8 +7,17 @@
  #include "./common.glsl"
  #iChannel0 "self"
 
+
+// ------------------------------------------------
+
+// Scenes (only one should be selected)
+bool SHIRLEY  = true;
+
+// Extra: Soft Shadows (only one should be selected)
 bool SOFT_SHADOWS = false;
-bool SOFT_SHADOWS_GRID = false;
+bool SOFT_SHADOWS_GRID  = false;
+
+// ------------------------------------------------
 
 bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
@@ -184,9 +193,6 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
     float shininess;
     HitRecord dummy;
 
-   //INSERT YOUR CODE HERE
-
-   // PROF CODE
    vec3 lightPos;
 
     if (SOFT_SHADOWS)  // Soft shadows: random light source point from area light
@@ -208,36 +214,32 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
         lightPos = pl.pos;
     }
 
-    vec3 l = normalize(lightPos - rec.pos);  // light vector
+    vec3 l = normalize(lightPos - rec.pos);
     float intensity = max(dot(rec.normal, l), .0f);
     Ray shadowRay = createRay(rec.pos + epsilon * rec.normal, l);
     float dist = length(pl.pos - rec.pos);
     
-    if(intensity > .0f) {
-        if(!hit_world(shadowRay, 0.0f, dist, dummy)) {
-            if(rec.material.type == MT_DIFFUSE) {
-                diffuseColor = rec.material.albedo / pi * intensity;
-                specularColor = rec.material.specColor;
-                //shininess = 10.0f;
-                shininess = 4.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
-            }
-            if(rec.material.type == MT_METAL) {
-                diffuseColor = rec.material.albedo;
-                specularColor = metalSchlick(intensity, rec.material.specColor);
-                shininess = 8.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
-                //shininess = 200.0f;
-            }
-            if(rec.material.type == MT_DIALECTRIC) {
-                diffuseColor = rec.material.albedo;
-                specularColor = rec.material.specColor;
-                shininess = 500.0f;  
-            }
+    if(!hit_world(shadowRay, 0.0f, dist, dummy) && intensity > .0f) {
 
-            vec3 h = normalize(l - r.d);
-            float intSpec = max(dot(h, rec.normal), .0f);
-            vec3 spec = specularColor * pow(intSpec, shininess);
-            colorOut = (diffuseColor + spec) * pl.color;
+        if(rec.material.type == MT_DIFFUSE) {
+            diffuseColor = rec.material.albedo / pi * intensity;
+            specularColor = rec.material.specColor;
+            shininess = 4.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
         }
+        else if(rec.material.type == MT_METAL) {
+            diffuseColor = rec.material.albedo;
+            specularColor = metalSchlick(intensity, rec.material.specColor);
+            shininess = 8.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
+        }
+        else if(rec.material.type == MT_DIALECTRIC) {
+            diffuseColor = rec.material.albedo;
+            specularColor = rec.material.specColor;
+            shininess = 500.0f;  
+        }
+
+        vec3 h = normalize(l - r.d);
+        colorOut = pl.color * diffuseColor + pl.color * specularColor * pow(max(dot(h, rec.normal), .0f), shininess);
+        
     }
 
 	return colorOut;
@@ -268,8 +270,6 @@ vec3 rayColor(Ray r)
             vec3 atten;
             if(scatter(r, rec, atten, scatterRay))
             {  
-                //INSERT YOUR CODE HERE
-                // PROF CODE
                 r = scatterRay;
                 throughput *= atten;
 

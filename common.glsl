@@ -6,21 +6,6 @@
 const float pi = 3.14159265358979;
 const float epsilon = 0.001;
 
-/*
-Implement to compile:
-
-Ray getRay -- DONE
-bool hit_triangle -- DONE
-vec3 center -- DONE
-bool hit_sphere -- DONE
-bool hit_movingSphere -- DONE
-
-Implement to complete shading:
-float schlick
-bool scatter
-*/
-
-
 struct Ray {
     vec3 o;     // origin
     vec3 d;     // direction - always set with normalized vector
@@ -238,26 +223,25 @@ float schlick(float cosine, float refIdx)
     return kr;
 }
 
-// PROF CODE
 vec3 metalSchlick(float cosine, vec3 F0) {
-    return F0 + (1.0f - F0) * pow(clamp(1.0f - cosine, .0f, 1.0f), 5.0f);
+    return F0 + (1.0f - F0) * pow(clamp(1.0f - cosine, .0f, 1.0f), 5.0f); // PROF CODE
 }
 
 bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
-        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
-        vec3 s = rec.normal + normalize(randomInUnitSphere(gSeed));
-        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s), rIn.t);
+        vec3 s = rec.pos + rec.normal + normalize(randomInUnitSphere(gSeed));
+        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s - rec.pos), rIn.t);
+        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0);
         return true;
     }
     if(rec.material.type == MT_METAL)
     {
-        atten = metalSchlick(-dot(rIn.d, rec.normal), rec.material.specColor);
         vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
-        vec3 s = refletedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
-        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s), rIn.t);
+        vec3 fuzzyDirection = rec.pos + refletedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
+        rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(fuzzyDirection - rec.pos), rIn.t);
+        atten = metalSchlick(-dot(rIn.d, rec.normal), rec.material.specColor);
         return true;
     }
     if(rec.material.type == MT_DIALECTRIC)
@@ -355,7 +339,6 @@ bool hit_triangle(Triangle tri, Ray r, float tmin, float tmax, out HitRecord rec
     }
     return false;
 }
-
 
 struct Sphere
 {
