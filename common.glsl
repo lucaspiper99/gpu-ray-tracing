@@ -233,7 +233,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     {
         vec3 s = rec.pos + rec.normal + normalize(randomInUnitSphere(gSeed));
         rScattered = createRay(rec.pos + epsilon * rec.normal, normalize(s - rec.pos), rIn.t);
-        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0);
+        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
         return true;
     }
     if(rec.material.type == MT_METAL)
@@ -284,13 +284,15 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         if(hash1(gSeed) < reflectProb)  //Reflection
         {
             vec3 refletedRayDirection = reflect(rIn.d, rec.normal);
-            rScattered = createRay(rec.pos + rec.normal * epsilon, normalize(refletedRayDirection), rIn.t);
+            vec3 fuzzyDirection = rec.pos + refletedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
+            rScattered = createRay(rec.pos + rec.normal * epsilon, normalize(fuzzyDirection - rec.pos), rIn.t);
             // atten *= vec3(reflectProb); not necessary since we are only scattering reflectProb rays and not all reflected rays
         }
         else  //Refraction
         {
             vec3 refractedRayDirection = normalize(vt) * sinT - outwardNormal * cosT;
-            rScattered = createRay(rec.pos - outwardNormal * epsilon, normalize(refractedRayDirection), rIn.t);
+            vec3 fuzzyDirection = rec.pos + refractedRayDirection + rec.material.roughness * randomInUnitSphere(gSeed);
+            rScattered = createRay(rec.pos - outwardNormal * epsilon, normalize(fuzzyDirection - rec.pos), rIn.t);
             // atten *= vec3(1.0 - reflectProb); not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
         }
 
