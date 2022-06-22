@@ -14,6 +14,7 @@
 bool SHIRLEY = false;
 bool CORNELL_BOX_BOXES = false;
 bool CORNELL_BOX_SPHERES = true;
+bool CAUSTICS = false;
 
 // Extra: Soft Shadows (only one should be selected)
 bool SOFT_SHADOWS = true;
@@ -190,7 +191,11 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         }
     }
 
-    float yShift, zShift, margin, boxSize, boxHeight;
+    float yShift = -3.5f;
+    float zShift = -8.0f;
+    float margin = 0.05f;
+    float boxSize = 6.0f;
+    float boxHeight = 8.0f;
 
     if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES) {
 
@@ -233,6 +238,98 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         {
             hit = true;
             rec.material = createDiffuseMaterial(vec3(1.0));
+        }
+
+        // Sphere
+        if(hit_sphere(
+            createSphere(vec3(0.0, 1.0, -3.0), 1.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(0.0, 1.0, 0.0), 1.10, 0.0);
+        }
+    }
+
+    if (CAUSTICS) {
+
+        yShift = -1.5f;
+        zShift = -3.5f;
+        margin = 0.05f;
+        boxSize = 6.0f;
+
+        // Floor
+        if(hit_quad(createQuad(vec3((boxSize+margin), -margin+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.95));
+        }
+
+        // Ceiling
+        /*
+        if(hit_quad(createQuad(vec3((boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.95));
+        }*/
+
+        // Piece of ceiling containing the light
+        float s = 5.0f; // Diminuicao em relação ao plano de cima 
+        float z = -2.5f; // Aumento no z
+        float y = 0.6f; // Aumento no y
+        if(hit_quad(createQuad(vec3((boxSize+margin)/s, boxSize+yShift+y, ((boxSize+margin)+zShift)/s+z), vec3((boxSize+margin)/s, boxSize+yShift+y, (-(boxSize+margin)+zShift)/s+z), vec3(-(boxSize+margin)/s, boxSize+yShift+y, (-(boxSize+margin)+zShift)/s+z), vec3(-(boxSize+margin)/s, boxSize+yShift+y, ((boxSize+margin)+zShift)/s+z)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.95));
+            rec.material.emissive = vec3(1.0) * 10.0f;
+        }
+        
+        // Left Wall (Red)
+        
+        if(hit_quad(createQuad(vec3(-boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(-boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.95, margin, margin));
+        }
+        
+        // Right Wall (Green)
+        if(hit_quad(createQuad(vec3(boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, -(boxSize+margin)+zShift)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(margin, 0.95, margin));
+        }
+
+        // Front Wall
+        if(hit_quad(createQuad(vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -boxSize+zShift), vec3((boxSize+margin), boxSize+yShift, -boxSize+zShift), vec3(-(boxSize+margin), boxSize+yShift, -boxSize+zShift)), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.95));
+        }
+
+        // Sphere
+        if(hit_sphere(
+            createSphere(vec3(-1.0, 0.0, -3.0), 1.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(0.0, 1.0, 0.0), 1.1, 0.05);
+        }
+
+        // Sphere 2
+        if(hit_sphere(
+            createSphere(vec3(1.0, 0.0, -3.0), 1.0),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(1.0, 1.0, 0.0), 1.15, 0.05);
         }
     }
 
@@ -300,13 +397,21 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
     vec3 colorOut = vec3(0.0, 0.0, 0.0);
     float shininess;
     HitRecord dummy;
+    vec3 emissive;
 
    vec3 lightPos;
 
     if (SOFT_SHADOWS)  // Soft shadows: random light source point from area light
     {
-        vec3 a = vec3(5.0f, 0.0f, 0.0f);
-        vec3 b = vec3(0.0f, 0.0f, 5.0f);
+        vec3 a,b;
+        if (CAUSTICS){
+            a = vec3(0.7f, 0.0f, 0.0f);
+            b = vec3(0.0f, 0.0f, 0.7f);
+        }
+        else{
+            a = vec3(5.0f, 0.0f, 0.0f);
+            b = vec3(0.0f, 0.0f, 5.0f);
+        }
 
         lightPos = pl.pos + (hash1(gSeed) * a) + (hash1(gSeed) * b);
     }
@@ -333,20 +438,23 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
             diffuseColor = rec.material.albedo / pi * intensity;
             specularColor = rec.material.specColor;
             shininess = 4.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
+            emissive = rec.material.emissive;
         }
         else if(rec.material.type == MT_METAL) {
             diffuseColor = rec.material.albedo;
             specularColor = metalSchlick(intensity, rec.material.specColor);
             shininess = 8.0f / (pow(rec.material.roughness, 4.0f) + epsilon) - 2.0f;
+            emissive = rec.material.emissive;
         }
         else if(rec.material.type == MT_DIALECTRIC) {
             diffuseColor = rec.material.albedo;
             specularColor = rec.material.specColor;
             shininess = 500.0f;  
+            emissive = rec.material.emissive;
         }
 
         vec3 h = normalize(l - r.d);
-        colorOut = pl.color * diffuseColor + pl.color * specularColor * pow(max(dot(h, rec.normal), .0f), shininess);
+        colorOut = pl.color * diffuseColor + pl.color * specularColor * pow(max(dot(h, rec.normal), .0f), shininess) + emissive;
         
     }
 
@@ -380,6 +488,12 @@ vec3 rayColor(Ray r)
                     col += directlighting(createPointLight(vec3(-0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
                     col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, -0.1+zShift), vec3(1.0)), r, rec) * throughput;
                     col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
+}
+                if (CAUSTICS){
+                    float boxSize = 6.0f;
+                    float yShift = -1.5f;
+                    float zShift = -3.5f;
+                    col += directlighting(createPointLight(vec3(0.0, boxSize+yShift, 0.0+zShift), vec3(1.0)), r, rec) * throughput;
                 }
 
             }
