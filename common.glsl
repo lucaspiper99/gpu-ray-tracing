@@ -559,7 +559,31 @@ vec3 center(MovingSphere mvsphere, float time)
 
 bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
 {
+    vec3 oc = r.o - s.center;
+    float a = dot(r.d, r.d);
+    float b = dot (oc, r.d);
+    float c = dot(oc, oc) - (s.radius * s.radius);
+    float discriminant = b * b - a * c;
 
+    if (discriminant > .0f) {
+        float temp = (-b - sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - s.center) / s.radius;
+            return true;
+        }
+        temp = (-b + sqrt(discriminant)) / a;
+        if (temp < tmax && temp > tmin) {
+            rec.t = temp;
+            rec.pos = pointOnRay(r, rec.t);
+            rec.normal = (rec.pos - s.center) / s.radius;
+            return true;
+        }
+    }
+    return false;
+
+    /*
     //INSERT YOUR CODE HERE
     vec3 rayDirection = normalize(r.d);
     vec3 oc = s.center - r.o;
@@ -582,10 +606,12 @@ bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
     if(t < tmax && t > tmin) {
         rec.t = t;
         rec.pos = pointOnRay(r, rec.t);
-        rec.normal = normalize(rec.pos - s.center);
+        rec.normal = rec.pos - s.center / s.radius;
         return true;
     }
     return false;
+    */
+
 }
 
 bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitRecord rec)

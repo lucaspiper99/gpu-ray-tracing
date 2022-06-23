@@ -36,13 +36,13 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         if(hit_triangle(createTriangle(vec3(-10.0, -0.05, 10.0), vec3(10.0, -0.05, 10.0), vec3(-10.0, -0.05, -10.0)), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.9));
+            rec.material = createDiffuseMaterial(vec3(0.2));
         }
 
         if(hit_triangle(createTriangle(vec3(-10.0, -0.05, -10.0), vec3(10.0, -0.05, 10), vec3(10.0, -0.05, -10.0)), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.9));
+            rec.material = createDiffuseMaterial(vec3(0.2));
         }
 
         if(hit_sphere(
@@ -98,7 +98,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             rec))
         {
             hit = true;
-            rec.material = createDialectricMaterial(vec3(0.0, 0.7, 0.9), 1.05, 0.05);
+            rec.material = createDialectricMaterial(vec3(0.0, 0.7, 0.9), 1.05, 0.0);
         }
     
 
