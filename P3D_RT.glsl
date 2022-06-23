@@ -12,16 +12,19 @@
 // ------------------------------------------------
 
 // Scenes (only one should be selected)
-bool SHIRLEY = false;
+bool SHIRLEY = true;
 bool CORNELL_BOX_BOXES = false;
-bool CORNELL_BOX_SPHERES = true;
-bool CAUSTICS = false;
+bool CORNELL_BOX_SPHERES = false;
+bool CORNELL_BOX_CYLINDERS = false;
+bool CORNELL_BOX_CONES = false;
+bool CORNELL_BOX_CAUSTICS = false;
 
 // Extra: Soft Shadows (only one should be selected)
 bool SOFT_SHADOWS = true;
 bool SOFT_SHADOWS_GRID  = false;
 
 // ------------------------------------------------
+
 
 bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
@@ -198,13 +201,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     float boxSize = 6.0f;
     float boxHeight = 8.0f;
 
-    if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES) {
-
-        yShift = -3.5f;
-        zShift = -8.0f;
-        margin = 0.05f;
-        boxSize = 6.0f;
-        boxHeight = 8.0f;
+    if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES || CORNELL_BOX_CYLINDERS || CORNELL_BOX_CONES || CORNELL_BOX_CAUSTICS) {
 
         // Floor
         if(hit_quad(createQuad(vec3((boxSize+margin), -margin+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
@@ -241,77 +238,21 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             rec.material = createDiffuseMaterial(vec3(1.0));
         }
 
-        // Sphere
-        if(hit_sphere(
-            createSphere(vec3(0.0, 1.0, -3.0), 1.0),
-            r,
-            tmin,
-            rec.t,
-            rec))
-        {
-            hit = true;
-            rec.material = createDialectricMaterial(vec3(0.0, 1.0, 0.0), 1.10, 0.0);
-        }
-    }
-
-    if (CAUSTICS) {
-
-        yShift = -1.5f;
-        zShift = -3.5f;
-        margin = 0.05f;
-        boxSize = 6.0f;
-
-        // Floor
-        if(hit_quad(createQuad(vec3((boxSize+margin), -margin+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), -margin+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
-        }
-
-        // Ceiling
-        /*
-        if(hit_quad(createQuad(vec3((boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift), vec3((boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, -(boxSize+margin)+zShift), vec3(-(boxSize+margin), boxSize+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
-        }*/
-
-        // Piece of ceiling containing the light
-        float s = 5.0f; // Diminuicao em relação ao plano de cima 
-        float z = -2.5f; // Aumento no z
-        float y = 0.6f; // Aumento no y
-        if(hit_quad(createQuad(vec3((boxSize+margin)/s, boxSize+yShift+y, ((boxSize+margin)+zShift)/s+z), vec3((boxSize+margin)/s, boxSize+yShift+y, (-(boxSize+margin)+zShift)/s+z), vec3(-(boxSize+margin)/s, boxSize+yShift+y, (-(boxSize+margin)+zShift)/s+z), vec3(-(boxSize+margin)/s, boxSize+yShift+y, ((boxSize+margin)+zShift)/s+z)), r, tmin, rec.t, rec))
+        // Light Quad Pointing Upwards
+        if(hit_quad(createQuad(vec3(2.5, boxHeight+yShift-margin, 2.5+zShift), vec3(-2.5, boxHeight+yShift-margin, 2.5+zShift), vec3(-2.5, boxHeight+yShift-margin, -2.5+zShift), vec3(2.5, boxHeight+yShift-margin, -2.5+zShift)), r, tmin, rec.t, rec))
         {
             hit = true;
             rec.material = createDiffuseMaterial(vec3(0.95));
             rec.material.emissive = vec3(1.0) * 10.0f;
         }
-        
-        // Left Wall (Red)
-        
-        if(hit_quad(createQuad(vec3(-boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(-boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, -(boxSize+margin)+zShift), vec3(-boxSize, (boxSize+margin)+yShift, (boxSize+margin)+zShift)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95, margin, margin));
-        }
-        
-        // Right Wall (Green)
-        if(hit_quad(createQuad(vec3(boxSize, -margin+yShift, -(boxSize+margin)+zShift), vec3(boxSize, -margin+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, (boxSize+margin)+zShift), vec3(boxSize, boxSize+yShift, -(boxSize+margin)+zShift)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(margin, 0.95, margin));
-        }
 
-        // Front Wall
-        if(hit_quad(createQuad(vec3(-(boxSize+margin), -margin+yShift, -(boxSize+margin)+zShift), vec3((boxSize+margin), -margin+yShift, -boxSize+zShift), vec3((boxSize+margin), boxSize+yShift, -boxSize+zShift), vec3(-(boxSize+margin), boxSize+yShift, -boxSize+zShift)), r, tmin, rec.t, rec))
-        {
-            hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.95));
-        }
+    }
+
+    if (CORNELL_BOX_CAUSTICS) {
 
         // Sphere
         if(hit_sphere(
-            createSphere(vec3(-1.0, 0.0, -3.0), 1.0),
+            createSphere(vec3(-1.5, 2.+yShift, 2.0+zShift), 1.5),
             r,
             tmin,
             rec.t,
@@ -320,10 +261,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             hit = true;
             rec.material = createDialectricMaterial(vec3(0.0, 1.0, 0.0), 1.1, 0.05);
         }
-
-        // Sphere 2
         if(hit_sphere(
-            createSphere(vec3(1.0, 0.0, -3.0), 1.0),
+            createSphere(vec3(1.5, 2.+yShift, 2.0+zShift), 1.5),
             r,
             tmin,
             rec.t,
@@ -338,7 +277,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 
         if (hit_box(createBox(vec3(-2.5, 0.0+yShift, 0.0+zShift), vec3(0.5f, 5.0+yShift , 3.0+zShift)), r, tmin, rec.t, rec)) {
             hit = true;
-            rec.material = createDialectricMaterial(vec3(0.0, 0.2, 0.8), 1.5, 0.05);
+            rec.material = createDialectricMaterial(vec3(0.0, 0.2, 0.8), 1.35, 0.05);
         }
 
         if (hit_box(createBox(vec3(-5.0f, 0.0+yShift, -5.0+zShift), vec3(5.5f, 2.0+yShift ,-3.0+zShift)), r, tmin, rec.t, rec)) {
@@ -390,6 +329,76 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 
     }
 
+    if (CORNELL_BOX_CYLINDERS) {
+        if (hit_AAC(
+            createAAC(vec3(-3.0f, 1.0+yShift, -4.0+zShift), vec3(-3.0f, 1.0+yShift, 4.0+zShift), 1.0f, 1.0f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(0.0, 0.2, 0.9), 1.5, 0.1);
+        }
+
+        if (hit_AAC(
+            createAAC(vec3(-1.0f, 4.0+yShift, -2.0+zShift), vec3(2.0f, 4.0+yShift, -2.0+zShift), 2.0f, 2.0f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createMetalMaterial(vec3(0.1, 0.1, 0.1), 0.3);
+        }
+
+        if (hit_AAC(
+            createAAC(vec3(4.0f, -0.5+yShift, 3.0+zShift), vec3(4.0f, 4.0+yShift, 3.0+zShift), 1.5f, 1.5f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(1.0f));
+        }
+    }
+
+    if (CORNELL_BOX_CONES) {
+        if (hit_AAC(
+            createAAC(vec3(.0f, 1.0+yShift, 2.5+zShift), vec3(.0f, 7.0+yShift, 2.5+zShift), 1.0f, 0.0f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDialectricMaterial(vec3(.0, .2, .9), 1.4, 0.05);
+        }
+
+        if (hit_AAC(
+            createAAC(vec3(-5.0f, 4.0+yShift, .0+zShift), vec3(2.0f, 4.0+yShift, .0+zShift), 0.2f, 0.0f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createMetalMaterial(vec3(0.1, 0.1, 0.1), 0.3);
+        }
+
+        if (hit_AAC(
+            createAAC(vec3(4.0f, 8.0+yShift, -3.0+zShift), vec3(4.0f, 2.0+yShift, -3.0+zShift), 0.3f, .0f),
+            r,
+            tmin,
+            rec.t,
+            rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(1.0f));
+        }
+    }
+
     return hit;
 }
 
@@ -404,15 +413,9 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec){
 
     if (SOFT_SHADOWS)  // Soft shadows: random light source point from area light
     {
-        vec3 a,b;
-        if (CAUSTICS){
-            a = vec3(0.7f, 0.0f, 0.0f);
-            b = vec3(0.0f, 0.0f, 0.7f);
-        }
-        else{
-            a = vec3(5.0f, 0.0f, 0.0f);
-            b = vec3(0.0f, 0.0f, 5.0f);
-        }
+
+        vec3 a = vec3(5.0f, 0.0f, 0.0f);
+        vec3 b = vec3(0.0f, 0.0f, 5.0f);
 
         lightPos = pl.pos + (hash1(gSeed) * a) + (hash1(gSeed) * b);
     }
@@ -482,19 +485,15 @@ vec3 rayColor(Ray r)
                     col += directlighting(createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                     col += directlighting(createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
                 }
-                if (CORNELL_BOX_BOXES || CORNELL_BOX_SPHERES) {
+                else
+                {
                     float yShift = -3.5f;
                     float zShift = -8.0f;
-                    float boxHeight = 8.0f;
-                    col += directlighting(createPointLight(vec3(-0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
-                    col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, -0.1+zShift), vec3(1.0)), r, rec) * throughput;
-                    col += directlighting(createPointLight(vec3(0.1, boxHeight+yShift-.5, 0.1+zShift), vec3(1.0)), r, rec) * throughput;
-}
-                if (CAUSTICS){
+                    float margin = 0.05f;
                     float boxSize = 6.0f;
-                    float yShift = -1.5f;
-                    float zShift = -3.5f;
-                    col += directlighting(createPointLight(vec3(0.0, boxSize+yShift, 0.0+zShift), vec3(1.0)), r, rec) * throughput;
+                    float boxHeight = 8.0f;
+                    col += directlighting(createPointLight(vec3(0.0, boxHeight+yShift-margin-0.1, 0.0+zShift), vec3(1.0)), r, rec) * throughput;
+                    col += directlighting(createPointLight(vec3(0.0, boxHeight+yShift-margin-0.1, 0.0+zShift), vec3(0.5)), r, rec) * throughput;
                 }
 
             }
